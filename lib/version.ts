@@ -1,4 +1,0 @@
-export const DATASET_VERSION = "2026-07-20";
-export const RULES_VERSION = "2.0";
-export const CATEGORY_SET_VERSION = "1.1";
-export const MAX_YEAR_SPREAD = 3;
