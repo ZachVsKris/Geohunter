@@ -1,0 +1,29 @@
+{
+  "name": "geo-second-coming",
+  "version": "2.4.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "verify-seed": "node scripts/verify-seed.mjs",
+    "verify-faostat": "node scripts/verify-faostat.mjs",
+    "test": "node scripts/test-invariants.mjs",
+    "check": "npm test && npm run build",
+    "verify-who": "node scripts/verify-distributed.mjs --source who",
+    "verify-unesco": "node scripts/verify-distributed.mjs --source unesco",
+    "verify-tourism": "node scripts/verify-distributed.mjs --source untourism",
+    "verify-natural-earth": "node scripts/verify-natural-earth.mjs"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}
