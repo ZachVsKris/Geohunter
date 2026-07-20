@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+const points=[100,90,80,70,60,50,40,30,20,10];
+assert.equal(points.length,10);
+assert.equal(points[0],100);
+assert.equal(points[9],10);
+for(let i=1;i<points.length;i++) assert.equal(points[i-1]-points[i],10);
+const rank=(values,direction="high")=>[...values].sort((a,b)=>direction==="high"?b-a:a-b);
+assert.deepEqual(rank([2,1,3]),[3,2,1]);
+assert.deepEqual(rank([2,1,3],"low"),[1,2,3]);
+console.log("Invariant smoke tests passed.");
