@@ -1,0 +1,24 @@
+{
+  "name": "geo-second-coming-v10a-worldbank-76",
+  "version": "10.5.4",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "verify-seed": "node scripts/verify-seed.mjs",
+    "test": "node scripts/test-invariants.mjs",
+    "check": "npm test && npm run build"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}
