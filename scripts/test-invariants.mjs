@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const text=fs.readFileSync(new URL("../lib/categories.ts", import.meta.url),"utf8");
+const ids=[...text.matchAll(/id:\"([^\"]+)\"/g)].map(m=>m[1]);
+assert.equal(new Set(ids).size, ids.length, "Category IDs must be unique");
+assert.equal(ids.length,76,"Expected 76 category definitions");
+const wb=(text.match(/wb\(\{id:/g)||[]).length;
+const fao=(text.match(/fao\(\{id:/g)||[]).length;
+assert.equal(wb,76);
+assert.equal(fao,0);
+console.log(`Invariant tests passed (${ids.length} definitions: ${wb} World Bank + ${fao} FAOSTAT).`);
