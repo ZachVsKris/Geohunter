@@ -1,1 +1,0 @@
-export default function Terms(){return <main style={{maxWidth:760,margin:"40px auto",padding:20}}><h1>Terms</h1><p>This game is provided as an educational beta. Statistics may be revised by their source agencies. Results should not be used for legal, financial, medical, or policy decisions.</p><p><a href="/">Back to game</a></p></main>}
