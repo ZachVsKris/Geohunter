@@ -68,6 +68,11 @@ assert.match(dailyTrioRouteText, /upsert\(replacements, \{ onConflict: "challeng
 assert.match(dailyTrioRouteText, /from\("daily_scores"\)/);
 assert.match(dailyTrioRouteText, /Cache-Control": "private, no-store, max-age=0"/);
 assert.match(scoreRouteText, /wrong dimensions and must be reloaded before scoring/);
+assert.match(scoreRouteText, /export async function GET/);
+assert.match(scoreRouteText, /alreadyCompleted: true/);
+assert.match(scoreRouteText, /\.from\("daily_scores"\)\.insert/);
+assert.match(componentText, /restoreSavedCompletion/);
+assert.match(componentText, /Completed earlier today\. This is the score saved to your account\./);
 assert.match(migrationText, /set difficulty = 'normal' where difficulty = 'easy'/);
 assert.match(migrationText, /difficulty in \('easy','normal','expert'\)/);
 assert.match(migrationText, /drop constraint if exists daily_scores_challenge_date_difficulty_fkey/);

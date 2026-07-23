@@ -23,6 +23,10 @@ type ScoreRow = {
   bestValue: number;
   bestGlobalRank: number;
 };
+type SavedDailyScore = {
+  assignments: Assignment;
+  completed_at?: string;
+};
 type GeoSecondComingGameProps = {
   initialDifficulty?: DailyDifficulty;
 };
@@ -104,6 +108,20 @@ function ordinal(rank: number) {
 
 function observationValue(category: RoundCategory, countryId: string) {
   return category.byCountry.get(countryId)?.value;
+}
+
+function buildScoreRows(round: Round, assignments: Assignment): ScoreRow[] {
+  return scorePlacements(round.categories, round.bank, assignments).map(({ dataset, selected, best }) => ({
+    category: dataset,
+    country: selected.country,
+    rank: selected.poolRank,
+    globalRank: selected.observation.globalRank,
+    points: selected.points,
+    value: selected.observation.value,
+    best: best.country,
+    bestValue: best.observation.value,
+    bestGlobalRank: best.observation.globalRank,
+  })).sort((a, b) => b.points - a.points);
 }
 
 function findDistinctWinners(
@@ -353,6 +371,7 @@ export default function GeoSecondComingGame({ initialDifficulty = DEFAULT_DIFFIC
   const [seed, setSeed] = useState("");
   const [difficulty, setDifficulty] = useState<DailyDifficulty>(initialDifficulty);
   const [copied, setCopied] = useState(false);
+  const [savedCompletion, setSavedCompletion] = useState(false);
   const [openLeaderboard, setOpenLeaderboard] = useState<string | null>(null);
   const [touchDrag, setTouchDrag] = useState<{ countryId: string; x: number; y: number; targetCategoryId: string | null } | null>(null);
   const touchStart = useRef<{ countryId: string; x: number; y: number } | null>(null);
@@ -382,8 +401,34 @@ export default function GeoSecondComingGame({ initialDifficulty = DEFAULT_DIFFIC
     setSelected(null);
     setSelectedCategory(null);
     setCopied(false);
+    setSavedCompletion(false);
     setSeed(nextSeed);
     setDifficulty(nextDifficulty);
+  }
+
+  async function restoreSavedCompletion(activeRound: Round, nextDifficulty: DailyDifficulty, challengeDate: string) {
+    try {
+      const params = new URLSearchParams({ challengeDate, difficulty: nextDifficulty });
+      const response = await fetch(`/api/scores?${params.toString()}`, { cache: "no-store" });
+      if (!response.ok) return false;
+      const data = await response.json().catch(() => null) as {
+        completed?: boolean;
+        result?: SavedDailyScore | null;
+      } | null;
+      const savedAssignments = data?.completed ? data.result?.assignments : null;
+      if (!savedAssignments || Object.keys(savedAssignments).length !== activeRound.categories.length) return false;
+      const categoryIds = new Set(activeRound.categories.map((dataset) => dataset.category.id));
+      const countryIds = new Set(activeRound.bank.map((country) => country.id));
+      if (Object.entries(savedAssignments).some(([categoryId, countryId]) => !categoryIds.has(categoryId) || !countryIds.has(countryId))) return false;
+      const restoredRows = buildScoreRows(activeRound, savedAssignments);
+      setAssignments(savedAssignments);
+      setScores(restoredRows);
+      setSavedCompletion(true);
+      return true;
+    } catch {
+      // A score-status lookup should never prevent the Daily board from loading.
+      return false;
+    }
   }
 
   async function loadDailyRound(nextDifficulty: DailyDifficulty, existingCountries = countries) {
@@ -406,6 +451,7 @@ export default function GeoSecondComingGame({ initialDifficulty = DEFAULT_DIFFIC
         const restored = fixed[nextDifficulty];
         if (restored) {
           setRound(restored);
+          await restoreSavedCompletion(restored, nextDifficulty, date);
           setStatus("");
           return;
         }
@@ -444,6 +490,7 @@ export default function GeoSecondComingGame({ initialDifficulty = DEFAULT_DIFFIC
         throw new Error(`The ${ROUND_CONFIGS[nextDifficulty].label} Daily could not be verified with the correct board size. Reload and try again.`);
       }
       setRound(finalRound);
+      await restoreSavedCompletion(finalRound, nextDifficulty, date);
       setStatus("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "The Daily boards could not be generated.");
@@ -567,18 +614,7 @@ Can you beat my score?`;
   function score() {
     if (!round || Object.keys(assignments).length !== categoryTarget) return;
     try {
-      const rows: ScoreRow[] = scorePlacements(round.categories, round.bank, assignments).map(({ dataset, selected, best }) => ({
-        category: dataset,
-        country: selected.country,
-        rank: selected.poolRank,
-        globalRank: selected.observation.globalRank,
-        points: selected.points,
-        value: selected.observation.value,
-        best: best.country,
-        bestValue: best.observation.value,
-        bestGlobalRank: best.observation.globalRank,
-      }));
-      setScores(rows.sort((a, b) => b.points - a.points));
+      setScores(buildScoreRows(round, assignments));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "The round could not be scored consistently.");
@@ -622,7 +658,7 @@ Can you beat my score?`;
       </section>
     </main>}
 
-    {round && scores && <section className="panel results"><div className="score"><span>Final score</span><div className="scoreValue"><strong>{total}</strong><b>/ {roundMaxScore}</b></div><div className="scoreInsights"><div><strong>{averagePlacement}</strong><span>Average placement</span></div><div><strong>{bestPossibleCount}</strong><span>Best possible</span></div><div><strong>{topFinishCount}/{categoryTarget}</strong><span>Top {topFinishRank}</span></div></div><div className="scoreBreakdown">{[1,2,3].map((rank)=><span key={rank}>{rank===1?"🥇":rank===2?"🥈":"🥉"} {scores.filter((row)=>row.rank===rank).length}</span>)}</div><p>{total>=roundMaxScore*.8125?"Elite allocation.":total>=roundMaxScore*.65?"Strong draft with room to optimize.":"A few specialists were spent in the wrong places."}</p><div className="scoreActions"><button className="shareScore" onClick={shareScore}>{copied ? "Score copied ✓" : "Share score"}</button><AccountControls results difficulty={difficulty} pendingScore={{ challengeDate: dailyDateFromSeed(seed), difficulty, assignments }} /></div></div>
+    {round && scores && <section className="panel results"><div className="score"><span>Final score</span>{savedCompletion && <p className="savedDailyNotice">Completed earlier today. This is the score saved to your account.</p>}<div className="scoreValue"><strong>{total}</strong><b>/ {roundMaxScore}</b></div><div className="scoreInsights"><div><strong>{averagePlacement}</strong><span>Average placement</span></div><div><strong>{bestPossibleCount}</strong><span>Best possible</span></div><div><strong>{topFinishCount}/{categoryTarget}</strong><span>Top {topFinishRank}</span></div></div><div className="scoreBreakdown">{[1,2,3].map((rank)=><span key={rank}>{rank===1?"🥇":rank===2?"🥈":"🥉"} {scores.filter((row)=>row.rank===rank).length}</span>)}</div><p>{total>=roundMaxScore*.8125?"Elite allocation.":total>=roundMaxScore*.65?"Strong draft with room to optimize.":"A few specialists were spent in the wrong places."}</p><div className="scoreActions"><button className="shareScore" onClick={shareScore}>{copied ? "Score copied ✓" : "Share score"}</button><AccountControls results difficulty={difficulty} pendingScore={savedCompletion ? undefined : { challengeDate: dailyDateFromSeed(seed), difficulty, assignments }} /></div></div>
       <div className="resultsHeading"><div><span className="kicker">Your placements</span><h3>Placement and points earned</h3></div><small>Open a ranking to compare all {poolSize} countries</small></div>
       {scores.map((row)=>{ const leaderboard=poolLeaderboard(row.category,round.bank); return <div className={`resultWrap theme-${row.category.category.family.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`} key={row.category.category.id}><div className="result"><div className="resultMain"><span>{row.category.category.icon}</span><div><strong>{row.category.category.name}</strong><small className="statTip" tabIndex={0}>{row.country.flag} {row.country.name} · {formatValue(row.value,row.category.category)} · {row.category.byCountry.get(row.country.id)?.year}<span className="tooltip">{SOURCE_REGISTRY[row.category.category.source].name} list: #{row.globalRank} globally<br/>Actual value: {formatValue(row.value,row.category.category)}<br/>Indicator: {row.category.category.indicator}<br/><a href={row.category.sourceUrl} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}>Open official source ↗</a></span></small></div></div><div className="placementSummary"><b>{ordinal(row.rank)} of {poolSize}</b><strong>{row.points} pts earned</strong>{row.rank===1&&<span>Best possible</span>}</div><button className="leaderboardButton" onClick={()=>setOpenLeaderboard(openLeaderboard===row.category.category.id?null:row.category.category.id)} aria-expanded={openLeaderboard===row.category.category.id}>{openLeaderboard===row.category.category.id?"Hide rankings":"View rankings"}</button></div>{openLeaderboard===row.category.category.id&&<div className="leaderboard"><div className="leaderboardHeader"><div className="leaderboardTitle"><h4>{row.category.category.name}</h4><span>All {poolSize} countries</span></div><div className="leaderboardSource"><span className="sourceBadge">{row.category.category.source === "worldbank" ? "World Bank" : SOURCE_REGISTRY[row.category.category.source].name}</span><a href={row.category.sourceUrl} target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}>Official source ↗</a></div></div>{leaderboard.map(item=><div key={item.country.id} className={item.country.id===row.country.id?"current":""}><b>#{item.poolRank}</b><span>{item.country.flag} {item.country.name}</span><span>{formatValue(item.observation.value,row.category.category)}</span><small>{item.observation.year}</small><strong>{item.points} pts</strong></div>)}</div>}</div>})}
       <div className="perfect"><div className="resultsHeading"><div><span className="kicker">🏆 Perfect Round</span><h3>The optimal allocation</h3></div><small>Each category’s best country among these {poolSize}</small></div>

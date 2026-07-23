@@ -1,6 +1,6 @@
 {
   "name": "geostats",
-  "version": "11.5.2",
+  "version": "11.5.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,8 +14,8 @@
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@supabase/ssr": "0.7.0",
-    "@supabase/supabase-js": "2.57.4"
+    "@supabase/ssr": "0.12.3",
+    "@supabase/supabase-js": "2.110.7"
   },
   "devDependencies": {
     "@types/node": "24.10.1",

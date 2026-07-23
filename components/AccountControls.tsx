@@ -51,7 +51,10 @@ export default function AccountControls({ pendingScore, results = false, difficu
         const data = await response.json().catch(() => ({}));
         if (response.ok) {
           localStorage.removeItem(key);
-          setMessage(`${difficulty === "expert" ? "Expert" : difficulty === "easy" ? "Easy" : "Normal"} Daily score saved to your account.`);
+          const label = difficulty === "expert" ? "Expert" : difficulty === "easy" ? "Easy" : "Normal";
+          setMessage(data.alreadyCompleted
+            ? `${label} Daily was already completed. Your original score remains saved.`
+            : `${label} Daily score saved to your account.`);
         } else if (response.status !== 401) {
           setMessage(data.error ?? "Score could not be saved.");
         }

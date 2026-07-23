@@ -922,3 +922,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:6px
 .authCallbackCard h1{margin:10px 0 14px;font-family:var(--display);font-size:clamp(34px,7vw,54px);font-weight:600}
 .authCallbackCard p{color:var(--muted);font-size:17px;line-height:1.55}
 .authCallbackCard a{display:inline-flex;margin-top:12px;padding:12px 16px;border:1px solid var(--accent);background:var(--accent);color:#172018;font-family:var(--label);font-size:10px;font-weight:800;letter-spacing:.08em;text-decoration:none;text-transform:uppercase}
+
+/* v11.5.4: restored one-attempt Daily state */
+.savedDailyNotice{margin:10px 0 2px;padding:9px 11px;border-left:3px solid var(--accent);background:rgba(212,191,114,.08);color:var(--ink)!important;font-family:var(--label)!important;font-size:9px!important;font-weight:800;letter-spacing:.06em;text-transform:uppercase}

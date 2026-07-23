@@ -9,6 +9,41 @@ function parseDifficulty(value: unknown): DailyDifficulty {
   return value === "easy" || value === "expert" ? value : "normal";
 }
 
+const scoreColumns = "score,average_placement,firsts,top_fives,difficulty,assignments,completed_at";
+
+export async function GET(request: Request) {
+  const authClient = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
+  if (!authClient || !admin) return NextResponse.json({ error: "Accounts are not configured." }, { status: 503 });
+
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ signedIn: false, completed: false, result: null }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
+  const url = new URL(request.url);
+  const challengeDate = url.searchParams.get("challengeDate");
+  const difficulty = parseDifficulty(url.searchParams.get("difficulty"));
+  if (!challengeDate || !/^\d{4}-\d{2}-\d{2}$/.test(challengeDate)) {
+    return NextResponse.json({ error: "Invalid challenge date." }, { status: 400 });
+  }
+
+  const { data, error } = await admin
+    .from("daily_scores")
+    .select(scoreColumns)
+    .eq("user_id", user.id)
+    .eq("challenge_date", challengeDate)
+    .eq("difficulty", difficulty)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ signedIn: true, completed: Boolean(data), result: data ?? null }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
+}
+
 export async function POST(request: Request) {
   const authClient = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
@@ -24,6 +59,21 @@ export async function POST(request: Request) {
   if (!body?.challengeDate || !body.assignments || Object.keys(body.assignments).length === 0) {
     return NextResponse.json({ error: "Invalid score submission." }, { status: 400 });
   }
+
+  const { data: existing, error: existingError } = await admin
+    .from("daily_scores")
+    .select(scoreColumns)
+    .eq("user_id", user.id)
+    .eq("challenge_date", body.challengeDate)
+    .eq("difficulty", difficulty)
+    .maybeSingle();
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
+  if (existing) {
+    return NextResponse.json({ saved: true, alreadyCompleted: true, result: existing }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   const { data: challenge, error: challengeError } = await admin
     .from("daily_challenges")
     .select("encoded_board")
@@ -46,7 +96,7 @@ export async function POST(request: Request) {
     const averagePlacement = rows.reduce((sum, row) => sum + row.selected.poolRank, 0) / rows.length;
     const firsts = rows.filter((row) => row.selected.poolRank === 1).length;
     const topFinishes = rows.filter((row) => row.selected.poolRank <= config.topFinishRank).length;
-    const { data, error } = await admin.from("daily_scores").upsert({
+    const { data, error } = await admin.from("daily_scores").insert({
       user_id: user.id,
       challenge_date: body.challengeDate,
       difficulty,
@@ -55,13 +105,25 @@ export async function POST(request: Request) {
       firsts,
       top_fives: topFinishes,
       assignments: body.assignments,
-    }, { onConflict: "user_id,challenge_date,difficulty", ignoreDuplicates: true })
-      .select("score,average_placement,firsts,top_fives,difficulty")
+    })
+      .select(scoreColumns)
       .single();
-    if (error && error.code !== "23505") return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({
-      saved: true,
-      result: data ?? { score, average_placement: averagePlacement, firsts, top_fives: topFinishes, difficulty },
+
+    if (error?.code === "23505") {
+      const { data: saved } = await admin
+        .from("daily_scores")
+        .select(scoreColumns)
+        .eq("user_id", user.id)
+        .eq("challenge_date", body.challengeDate)
+        .eq("difficulty", difficulty)
+        .single();
+      return NextResponse.json({ saved: true, alreadyCompleted: true, result: saved }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ saved: true, alreadyCompleted: false, result: data }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Score verification failed." }, { status: 400 });

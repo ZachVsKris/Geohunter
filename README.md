@@ -1,4 +1,16 @@
-# GeoStats v11.3.3
+# GeoStats v11.5.4
+
+## Persistent accounts and one Daily attempt per mode
+
+This build includes the v11.5.3 server-side authentication persistence repair and adds account-level Daily completion locking.
+
+For each calendar date, a signed-in player can submit exactly one verified score for each difficulty: Easy, Normal, and Expert. When the player returns to a Daily they already completed, GeoStats loads the saved assignments and result instead of reopening the board for another attempt. Duplicate submissions return the original saved result and cannot replace the first score.
+
+No new Supabase migration is required because the existing `daily_scores` unique constraint already enforces one row per user, date, and difficulty.
+
+After deployment, sign in once, complete a Daily, close the tab, and reopen that same Daily. GeoStats should show the saved results screen with a completed-earlier notice.
+
+---
 
 GeoStats is now a three-Daily geography strategy game. Random and shared seeded rounds have been removed from the player-facing product.
 
