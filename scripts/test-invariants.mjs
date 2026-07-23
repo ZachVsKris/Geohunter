@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const categoryText=fs.readFileSync(new URL("../lib/categories.ts", import.meta.url),"utf8");
+const rulesText=fs.readFileSync(new URL("../lib/gameRules.ts", import.meta.url),"utf8");
+const ids=[...categoryText.matchAll(/id:"([^"]+)"/g)].map(m=>m[1]);
+assert.equal(new Set(ids).size, ids.length, "Category IDs must be unique");
+assert.equal(ids.length,76,"Expected 76 category definitions");
+const wb=(categoryText.match(/wb\(\{id:/g)||[]).length;
+const fao=(categoryText.match(/fao\(\{id:/g)||[]).length;
+assert.equal(wb,76);
+assert.equal(fao,0);
+assert.match(rulesText,/CATEGORY_COUNT = 6/);
+assert.match(rulesText,/COUNTRY_COUNT = 8/);
+assert.match(rulesText,/MAX_GENERAL_TRADE = 2/);
+assert.match(rulesText,/MIN_ROUND_TYPES = 4/);
+console.log(`Invariant tests passed (${ids.length} definitions; 8 countries, 6 categories, diversified rounds).`);
