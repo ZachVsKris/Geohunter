@@ -1,0 +1,4 @@
+begin;
+alter table public.stat_categories drop constraint if exists stat_categories_source_organization_source_dataset_source_indicator_code_key;
+create index if not exists stat_categories_source_indicator_idx on public.stat_categories(source_organization,source_dataset,source_indicator_code);
+commit;

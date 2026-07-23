@@ -83,3 +83,22 @@ npm run build
 ```
 
 Environment variables remain documented in `.env.example`.
+
+
+## GeoStats Admin v1
+
+The protected control center is available at `/admin` to users listed in `public.app_admins`.
+
+Before deploying v11.5.0, run these migrations in order if they have not already been run:
+
+- `005_data_warehouse_schema.sql`
+- `006_allow_shared_indicator_codes.sql`
+- `007_admin_access.sql` (replace the placeholder UUID first)
+- `008_data_sources.sql`
+
+Vercel must contain `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and either `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`.
+
+The World Bank refresh button imports one category per request to avoid long serverless timeouts, records import history, and updates category coverage and latest-year metadata. The public daily generator remains on the proven current data pipeline until warehouse validation is complete.
+
+### Upgrade from v11.3.3
+If migrations 005, 006, and 007 are already complete, run only `008_data_sources.sql` before deploying this version.
