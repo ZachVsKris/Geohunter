@@ -102,3 +102,7 @@ The World Bank refresh button imports one category per request to avoid long ser
 
 ### Upgrade from v11.3.3
 If migrations 005, 006, and 007 are already complete, run only `008_data_sources.sql` before deploying this version.
+
+## v11.5.1 authentication fix
+
+The `/auth/callback` implementation now completes and persists Supabase sessions returned through PKCE authorization codes, token hashes, or legacy URL-fragment tokens. Authentication failures are displayed instead of being silently redirected away.
