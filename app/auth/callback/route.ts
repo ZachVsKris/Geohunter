@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+function safeNext(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/daily";
+  return value;
+}
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/daily";
-  const supabase = await createSupabaseServerClient();
-  if (code && supabase) await supabase.auth.exchangeCodeForSession(code);
-  return NextResponse.redirect(new URL(next, url.origin));
+  const incoming = new URL(request.url);
+  const destination = new URL("/auth/complete", incoming.origin);
+
+  incoming.searchParams.forEach((value, key) => {
+    destination.searchParams.set(key, value);
+  });
+  destination.searchParams.set("next", safeNext(incoming.searchParams.get("next")));
+
+  return NextResponse.redirect(destination);
 }
