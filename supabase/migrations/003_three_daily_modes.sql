@@ -16,6 +16,12 @@ alter table public.daily_scores
 update public.daily_challenges set difficulty = 'normal' where difficulty = 'easy';
 update public.daily_scores set difficulty = 'normal' where difficulty = 'easy';
 
+-- Keep the human-readable seed label aligned with the renamed mode.
+update public.daily_challenges
+set seed = 'DAILY-' || upper(difficulty) || '-' || challenge_date::text
+where difficulty in ('easy','normal','expert')
+  and seed is distinct from ('DAILY-' || upper(difficulty) || '-' || challenge_date::text);
+
 alter table public.daily_scores
   add constraint daily_scores_challenge_date_difficulty_fkey
   foreign key (challenge_date, difficulty)

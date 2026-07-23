@@ -1,13 +1,13 @@
-# GeoStats v11.3.1
+# GeoStats v11.3.3
 
 GeoStats is now a three-Daily geography strategy game. Random and shared seeded rounds have been removed from the player-facing product.
 
-## Interface refinement
+## v11.3.1 interface refinement
 
 - Removed the redundant Copy Link button from the Daily challenge bar; each mode now uses its clean browser URL for sharing
 - Centered the fifth Easy country on the final desktop row
 - Share Score remains available after completing a challenge
-- No additional Supabase migration is required after v11.3.0
+- No additional Supabase migration was required for v11.3.1
 
 
 ## v11.3.2 interface refinements
@@ -15,6 +15,14 @@ GeoStats is now a three-Daily geography strategy game. Random and shared seeded 
 - Easy Daily's five mobile country cards are arranged as a centered 3 + 2 grid
 - Mobile category titles and measurement descriptions wrap to additional lines instead of being truncated
 - No Supabase migration is required when upgrading from v11.3.0 or v11.3.1
+
+
+## v11.3.3 database-label correction
+
+- Canonicalizes the readable Supabase `seed` field so each row clearly says `DAILY-EASY`, `DAILY-NORMAL`, or `DAILY-EXPERT`
+- Fixes migrated Normal rows that still displayed the former `DAILY-EASY` seed label
+- Does not change any encoded board, leaderboard score, or challenge result
+- Existing v11.3.x projects should run only `supabase/migrations/004_canonical_daily_seed_labels.sql` once
 
 ## Daily modes
 
@@ -62,9 +70,9 @@ Easy, Normal, and Expert have separate Today and All-time leaderboards. Each sig
 
 For an existing v11.2.3 Supabase project, run **only** `supabase/migrations/003_three_daily_modes.sql` once before deploying this version. Do not rerun migrations 001 or 002.
 
-For a brand-new Supabase project, run the migrations in numerical order: 001, 002, then 003.
+For a brand-new Supabase project, run the migrations in numerical order: 001, 002, 003, then 004.
 
-Migration 003 converts the old internal `easy` value—which previously represented Normal—to `normal`, preserving existing Normal Daily boards and scores. It then enables the new true Easy mode.
+Migration 003 converts the old internal `easy` value—which previously represented Normal—to `normal`, preserving existing Normal Daily boards and scores. Migration 004 cleans up the human-readable seed labels for projects where Migration 003 had already run.
 
 ## Development
 
