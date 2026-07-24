@@ -1,33 +1,56 @@
-# GeoStats v12.0.2
+# GeoStats v12.1.0 — Strict Data Intake
 
-This release adds three connected systems:
+This release begins the multi-source expansion without lowering GeoStats' data standard.
+It adds the first full external-source pipeline: **FAOSTAT crop and livestock production
+(QCL)**, imported into a quarantine and editorial review workflow.
 
-1. A canonical country registry limited to the 193 UN member states plus the Holy See and State of Palestine.
-2. Automated 0–100 category quality scoring. Only categories scoring at least 80 with at least 175 playable countries are eligible for Daily boards.
-3. An optimization-based Daily generator. It evaluates up to 36 valid candidate boards per difficulty and selects the strongest based on data quality, category/measure variety, geographic spread, ranking tension, and difficulty fit.
+## What this release adds
+
+- A generic candidate-data intake model shared by future FAOSTAT, WHO, UNESCO,
+  Comtrade, energy, climate, and other importers
+- A GitHub Actions FAOSTAT bulk importer that can process the large official dataset
+  without relying on a short-lived Vercel function
+- Strict automated checks for:
+  - common-year coverage
+  - freshness
+  - official versus estimated/imputed observations
+  - severe ties or clustering
+  - year-to-year ranking stability
+- An evidence tier and 0–100 quality score for every candidate
+- A review quarantine: **imports never become playable automatically**
+- Admin inspection of the top and bottom rankings before approval
+- Approve, reject, and reset actions with an audit trail
+
+Missing country reports are always kept missing. The importer never converts them to
+zero, even where a zero might seem plausible.
 
 ## Required deployment order
 
-1. In Supabase SQL Editor, run `RUN_THIS_IN_SUPABASE_FIRST.sql`.
+1. In Supabase SQL Editor, run `RUN_THIS_IN_SUPABASE_FIRST.sql`
+   (the same migration is stored as `supabase/migrations/010_candidate_intake_and_reviews.sql`).
 2. Upload the extracted project files to GitHub.
-3. Wait for the Vercel deployment to show Ready.
-4. Open `/admin` and run Refresh World Bank once.
+3. Wait for Vercel to show **Ready**.
+4. Open GitHub → **Actions** → **Import FAOSTAT candidates** → **Run workflow**.
+5. After the workflow completes, open `/admin` and filter the Category Library to
+   **FAOSTAT** and **Needs review**.
+6. Inspect surprising rankings before approving any category.
 
-The refresh recalculates every category's quality score, marks Daily eligibility, removes non-UN countries from imported observations, and updates the canonical countries table.
+The GitHub workflow uses the existing repository secrets:
 
-Existing saved boards remain unchanged unless they contain a now-ineligible country or fail validation. Newly generated boards use the optimizer.
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
 
+## Important scope boundary
 
-## v12.0.1 verification fixes
+v12.1.0 loads and reviews FAOSTAT candidates in the warehouse. It does **not** yet make
+the puzzle engine dynamically read external categories. Approval marks a category as
+eligible in the warehouse; the next integration step will make the generator consume
+approved warehouse categories rather than only the original hardcoded catalog.
 
-- Uses the current World Bank AR5 series for total CO2, CO2 per capita, and methane emissions.
-- Preserves all v12 Puzzle Intelligence functionality; this is not a downgrade to v11.6.
-- Surfaces World Bank API message-envelope errors instead of misreporting them as zero coverage.
-- Uses the same New York date boundary in Admin and the Daily game.
-- Locks board regeneration once player scores exist, protecting saved scores and the one-attempt rule.
+## Existing v12 features retained
 
-
-## v12.0.2 build fix
-
-- Gives Puzzle Intelligence diagnostics a concrete TypeScript shape.
-- Converts valid-candidate totals to a guaranteed numeric value before rendering, fixing the Next.js production-build error where `unknown` was not assignable to `ReactNode`.
+- UN-recognized country registry
+- World Bank category scoring
+- Puzzle Intelligence optimizer and diagnostics
+- Persistent authentication
+- One saved Daily attempt per mode and date
