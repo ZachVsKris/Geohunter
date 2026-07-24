@@ -28,6 +28,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+import urllib.parse
 import zipfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -113,7 +114,7 @@ class SupabaseRest:
             "apikey": key,
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "GeoStats-FAOSTAT-Importer/12.1",
+            "User-Agent": "GeoStats-FAOSTAT-Importer/12.1.1",
         }
         # Supabase's current sb_secret_ keys are API keys, not JWTs, and must
         # not be sent as Authorization bearer tokens. Legacy service_role keys
@@ -228,38 +229,60 @@ def column_map(headers: Sequence[str]) -> ColumnMap:
 
 
 def locate_qcl_zip(catalog: Any) -> str:
+    """Return the normalized QCL production archive, never a similarly named trade file.
+
+    FAOSTAT's catalog contains both production and trade datasets whose descriptions
+    include the words "crops" and "livestock". The earlier fuzzy search inherited
+    text from parent catalog nodes and could select Trade_CropsLivestockIndicators.
+    This matcher scores only each URL and its own record, explicitly rejects trade
+    archives, and requires the production/QCL filename pattern.
+    """
     matches: list[tuple[int, str]] = []
 
-    def walk(node: Any, context: str = "") -> None:
+    def consider(record: Mapping[str, Any]) -> None:
+        record_text = " ".join(str(v) for v in record.values() if isinstance(v, (str, int, float))).lower()
+        for value in record.values():
+            if not isinstance(value, str):
+                continue
+            url = value.strip()
+            lower_url = url.lower()
+            if not lower_url.startswith("http") or ".zip" not in lower_url:
+                continue
+            filename = urllib.parse.unquote(lower_url.rsplit("/", 1)[-1])
+            # Never accept the separate crops/livestock trade-indicators dataset.
+            if "trade_" in filename or "trade crops" in record_text or "trade_crops" in filename:
+                continue
+            score = 0
+            if "production_crops_livestock" in filename:
+                score += 100
+            if "qcl" in filename or " qcl" in record_text:
+                score += 80
+            if "crops and livestock products" in record_text:
+                score += 60
+            if "normalized" in filename:
+                score += 20
+            if "all_data" in filename or "all data" in record_text:
+                score += 10
+            if score >= 80:
+                matches.append((score, url))
+
+    def walk(node: Any) -> None:
         if isinstance(node, dict):
-            serialized = " ".join(str(v) for v in node.values() if isinstance(v, (str, int, float)))
-            new_context = f"{context} {serialized}".lower()
+            consider(node)
             for value in node.values():
-                if isinstance(value, str) and value.lower().startswith("http") and ".zip" in value.lower():
-                    score = 0
-                    text = f"{new_context} {value}".lower()
-                    if "qcl" in text or "crops_livestock" in text or "crops livestock" in text:
-                        score += 20
-                    if "normalized" in text:
-                        score += 10
-                    if "all_data" in text or "all data" in text:
-                        score += 5
-                    matches.append((score, value))
-                walk(value, new_context)
+                walk(value)
         elif isinstance(node, list):
             for value in node:
-                walk(value, context)
+                walk(value)
 
     walk(catalog)
-    matches.sort(reverse=True)
-    if matches and matches[0][0] >= 20:
-        return matches[0][1]
-    return FALLBACK_ZIP_URL
+    matches.sort(key=lambda pair: pair[0], reverse=True)
+    return matches[0][1] if matches else FALLBACK_ZIP_URL
 
 
 def download(url: str, target: Path) -> None:
     log(f"Downloading {url}")
-    request = urllib.request.Request(url, headers={"User-Agent": "GeoStats-FAOSTAT-Importer/12.1"})
+    request = urllib.request.Request(url, headers={"User-Agent": "GeoStats-FAOSTAT-Importer/12.1.1"})
     with urllib.request.urlopen(request, timeout=180) as response, target.open("wb") as handle:
         while True:
             block = response.read(1024 * 1024)
@@ -271,7 +294,7 @@ def download(url: str, target: Path) -> None:
 
 def get_zip_url() -> str:
     try:
-        request = urllib.request.Request(CATALOG_URL, headers={"User-Agent": "GeoStats-FAOSTAT-Importer/12.1"})
+        request = urllib.request.Request(CATALOG_URL, headers={"User-Agent": "GeoStats-FAOSTAT-Importer/12.1.1"})
         with urllib.request.urlopen(request, timeout=60) as response:
             catalog = json.load(response)
         url = locate_qcl_zip(catalog)

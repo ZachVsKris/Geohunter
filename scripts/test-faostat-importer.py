@@ -61,3 +61,31 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def test_catalog_never_selects_trade_archive():
+    catalog = [
+        {
+            "dataset": "Crops and livestock products",
+            "download": "https://bulks-faostat.fao.org/production/Trade_CropsLivestockIndicators_E_All_Data_(Normalized).zip",
+        },
+        {
+            "dataset": "Production: Crops and livestock products (QCL)",
+            "download": "https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data_(Normalized).zip",
+        },
+    ]
+    selected = IMPORTER.locate_qcl_zip(catalog)
+    assert "Production_Crops_Livestock" in selected
+    assert "Trade_" not in selected
+
+
+def test_catalog_falls_back_when_only_trade_archive_exists():
+    catalog = [{
+        "dataset": "Trade crops and livestock indicators",
+        "download": "https://bulks-faostat.fao.org/production/Trade_CropsLivestockIndicators_E_All_Data_(Normalized).zip",
+    }]
+    assert IMPORTER.locate_qcl_zip(catalog) == IMPORTER.FALLBACK_ZIP_URL
+
+
+test_catalog_never_selects_trade_archive()
+test_catalog_falls_back_when_only_trade_archive_exists()

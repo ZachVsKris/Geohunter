@@ -1,4 +1,4 @@
-# GeoStats v12.1.0 — Strict Data Intake
+# GeoStats v12.1.1 — Strict Data Intake
 
 This release begins the multi-source expansion without lowering GeoStats' data standard.
 It adds the first full external-source pipeline: **FAOSTAT crop and livestock production
@@ -42,7 +42,7 @@ The GitHub workflow uses the existing repository secrets:
 
 ## Important scope boundary
 
-v12.1.0 loads and reviews FAOSTAT candidates in the warehouse. It does **not** yet make
+v12.1.1 loads and reviews FAOSTAT candidates in the warehouse. It does **not** yet make
 the puzzle engine dynamically read external categories. Approval marks a category as
 eligible in the warehouse; the next integration step will make the generator consume
 approved warehouse categories rather than only the original hardcoded catalog.
