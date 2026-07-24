@@ -1,4 +1,5 @@
 import type { Category } from "./categories";
+import { isUnRecognizedCountry } from "./playableCountries";
 
 export type CountryInfo = { id: string; name: string; region: string; flag: string };
 export type Observation = { countryId: string; countryName: string; value: number; year: string };
@@ -36,7 +37,7 @@ export async function fetchCountries(): Promise<CountryInfo[]> {
         // World Bank aggregate entities (World, income groups, regions, etc.) use region.id = NA.
         // Keep actual countries and territories only; do not use capitalCity because several valid
         // playable territories omit it in World Bank metadata.
-        .filter((row: any) => row.id?.length === 3 && row.region?.id && row.region.id !== "NA")
+        .filter((row: any) => row.id?.length === 3 && row.region?.id && row.region.id !== "NA" && isUnRecognizedCountry(row.id))
         .map((row: any) => ({
           id: row.id,
           name: row.name,

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/supabase/adminAuth";
 import { CATEGORIES, type Category } from "../../../../../lib/categories";
-import { fetchWorldBankCategory } from "../../../../../lib/worldBank";
+import { fetchCountries, fetchWorldBankCategory } from "../../../../../lib/worldBank";
+import { scoreCategoryQuality } from "../../../../../lib/categoryQuality";
 
 export const dynamic='force-dynamic'; export const maxDuration=60;
 const worldBankCategories=CATEGORIES.filter(c=>c.source==='worldbank' && c.enabled!==false);
@@ -20,15 +21,16 @@ export async function POST(req:Request){
  }
  if(body.action==='category'){
   const c=worldBankCategories.find(x=>x.id===body.categoryId);if(!c)return NextResponse.json({error:'Unknown World Bank category.'},{status:400});
-  try{const dataset=await fetchWorldBankCategory(c);const rows=dataset.observations.map(o=>({category_id:c.id,country_iso3:o.countryId,country_name:o.countryName,data_year:Number(o.year),value:o.value,source_url:`https://data.worldbank.org/indicator/${c.indicator}`,source_record_id:`${c.indicator}:${o.countryId}:${o.year}`,metadata:{indicator:c.indicator}}));
+  try{const dataset=await fetchWorldBankCategory(c);const quality=scoreCategoryQuality(dataset);const rows=dataset.observations.map(o=>({category_id:c.id,country_iso3:o.countryId,country_name:o.countryName,data_year:Number(o.year),value:o.value,source_url:`https://data.worldbank.org/indicator/${c.indicator}`,source_record_id:`${c.indicator}:${o.countryId}:${o.year}`,metadata:{indicator:c.indicator}}));
    // Replace this category's snapshot so removed aggregates or stale countries cannot survive a refresh.
    const {error:deleteError}=await admin.from('stat_observations').delete().eq('category_id',c.id);if(deleteError)throw deleteError;
    const {error}=await admin.from('stat_observations').upsert(rows,{onConflict:'category_id,country_iso3,data_year'});if(error)throw error;
-   const latest=Math.max(...rows.map(r=>r.data_year));await admin.from('stat_categories').update({country_coverage:rows.length,latest_available_year:latest,enabled:true}).eq('id',c.id);await bump(admin,Number(body.runId),rows.length);return NextResponse.json({ok:true,category:c.id,observations:rows.length,year:latest});
+   const countries=await fetchCountries();await admin.from('countries').upsert(countries.map(country=>({iso3:country.id,name:country.name,region:country.region,playable:true,updated_at:new Date().toISOString()})),{onConflict:'iso3'});
+   const latest=Math.max(...rows.map(r=>r.data_year));await admin.from('stat_categories').update({country_coverage:rows.length,latest_available_year:latest,quality_score:quality.score,eligible_daily:quality.eligible,quality_details:quality,enabled:quality.eligible}).eq('id',c.id);await bump(admin,Number(body.runId),rows.length);return NextResponse.json({ok:true,category:c.id,observations:rows.length,year:latest,quality:quality.score,eligibleDaily:quality.eligible});
   }catch(e:any){
    // A category without sufficient current playable-country coverage must never enter board generation.
    await admin.from('stat_observations').delete().eq('category_id',c.id);
-   await admin.from('stat_categories').update({country_coverage:0,latest_available_year:null,enabled:false}).eq('id',c.id);
+   await admin.from('stat_categories').update({country_coverage:0,latest_available_year:null,quality_score:0,eligible_daily:false,quality_details:{error:e?.message||'Category import failed.'},enabled:false}).eq('id',c.id);
    await bump(admin,Number(body.runId),0);return NextResponse.json({error:e?.message||'Category import failed.'},{status:500});}
  }
  if(body.action==='finish'){

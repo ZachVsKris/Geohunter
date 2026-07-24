@@ -1,120 +1,18 @@
-# GeoStats v11.5.4
+# GeoStats v11.6.0
 
-## Persistent accounts and one Daily attempt per mode
+This release adds three connected systems:
 
-This build includes the v11.5.3 server-side authentication persistence repair and adds account-level Daily completion locking.
+1. A canonical country registry limited to the 193 UN member states plus the Holy See and State of Palestine.
+2. Automated 0–100 category quality scoring. Only categories scoring at least 80 with at least 175 playable countries are eligible for Daily boards.
+3. An optimization-based Daily generator. It evaluates up to 36 valid candidate boards per difficulty and selects the strongest based on data quality, category/measure variety, geographic spread, ranking tension, and difficulty fit.
 
-For each calendar date, a signed-in player can submit exactly one verified score for each difficulty: Easy, Normal, and Expert. When the player returns to a Daily they already completed, GeoStats loads the saved assignments and result instead of reopening the board for another attempt. Duplicate submissions return the original saved result and cannot replace the first score.
+## Required deployment order
 
-No new Supabase migration is required because the existing `daily_scores` unique constraint already enforces one row per user, date, and difficulty.
+1. In Supabase SQL Editor, run `RUN_THIS_IN_SUPABASE_FIRST.sql`.
+2. Upload the extracted project files to GitHub.
+3. Wait for the Vercel deployment to show Ready.
+4. Open `/admin` and run Refresh World Bank once.
 
-After deployment, sign in once, complete a Daily, close the tab, and reopen that same Daily. GeoStats should show the saved results screen with a completed-earlier notice.
+The refresh recalculates every category's quality score, marks Daily eligibility, removes non-UN countries from imported observations, and updates the canonical countries table.
 
----
-
-GeoStats is now a three-Daily geography strategy game. Random and shared seeded rounds have been removed from the player-facing product.
-
-## v11.3.1 interface refinement
-
-- Removed the redundant Copy Link button from the Daily challenge bar; each mode now uses its clean browser URL for sharing
-- Centered the fifth Easy country on the final desktop row
-- Share Score remains available after completing a challenge
-- No additional Supabase migration was required for v11.3.1
-
-
-## v11.3.2 interface refinements
-
-- Easy Daily's five mobile country cards are arranged as a centered 3 + 2 grid
-- Mobile category titles and measurement descriptions wrap to additional lines instead of being truncated
-- No Supabase migration is required when upgrading from v11.3.0 or v11.3.1
-
-
-## v11.3.3 database-label correction
-
-- Canonicalizes the readable Supabase `seed` field so each row clearly says `DAILY-EASY`, `DAILY-NORMAL`, or `DAILY-EXPERT`
-- Fixes migrated Normal rows that still displayed the former `DAILY-EASY` seed label
-- Does not change any encoded board, leaderboard score, or challenge result
-- Existing v11.3.x projects should run only `supabase/migrations/004_canonical_daily_seed_labels.sql` once
-
-## Daily modes
-
-### Easy Daily
-- 5 countries
-- 4 categories
-- 1 unused country
-- Rank scoring: 100, 75, 50, 25, 0
-- Maximum score: 400
-- Route: `/daily/easy`
-
-### Normal Daily
-- 8 countries
-- 6 categories
-- 2 unused countries
-- Rank scoring: 100, 85, 70, 55, 40, 25, 10, 0
-- Maximum score: 600
-- Route: `/daily`
-
-### Expert Daily
-- 10 countries
-- 8 categories
-- 2 unused countries
-- Rank scoring: 100, 90, 80, 70, 60, 50, 40, 30, 20, 10
-- Maximum score: 800
-- Route: `/daily/expert`
-
-`geostats.xyz` redirects to the Normal Daily. The active Daily is highlighted in the navigation.
-
-## Daily variety rules
-
-The three boards are generated as one coordinated set for each date:
-
-- Categories are completely distinct across Easy, Normal, and Expert
-- Any two Daily boards share no more than one country
-- Each category has a different first-place country within its own board
-
-These generator constraints are intentionally not shown in the player rules.
-
-## Leaderboards
-
-Easy, Normal, and Expert have separate Today and All-time leaderboards. Each signed-in player can save one verified score per mode per date.
-
-## Supabase migration
-
-For an existing v11.2.3 Supabase project, run **only** `supabase/migrations/003_three_daily_modes.sql` once before deploying this version. Do not rerun migrations 001 or 002.
-
-For a brand-new Supabase project, run the migrations in numerical order: 001, 002, 003, then 004.
-
-Migration 003 converts the old internal `easy` value—which previously represented Normal—to `normal`, preserving existing Normal Daily boards and scores. Migration 004 cleans up the human-readable seed labels for projects where Migration 003 had already run.
-
-## Development
-
-```bash
-npm install
-npm test
-npm run build
-```
-
-Environment variables remain documented in `.env.example`.
-
-
-## GeoStats Admin v1
-
-The protected control center is available at `/admin` to users listed in `public.app_admins`.
-
-Before deploying v11.5.0, run these migrations in order if they have not already been run:
-
-- `005_data_warehouse_schema.sql`
-- `006_allow_shared_indicator_codes.sql`
-- `007_admin_access.sql` (replace the placeholder UUID first)
-- `008_data_sources.sql`
-
-Vercel must contain `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and either `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`.
-
-The World Bank refresh button imports one category per request to avoid long serverless timeouts, records import history, and updates category coverage and latest-year metadata. The public daily generator remains on the proven current data pipeline until warehouse validation is complete.
-
-### Upgrade from v11.3.3
-If migrations 005, 006, and 007 are already complete, run only `008_data_sources.sql` before deploying this version.
-
-## v11.5.1 authentication fix
-
-The `/auth/callback` implementation now completes and persists Supabase sessions returned through PKCE authorization codes, token hashes, or legacy URL-fragment tokens. Authentication failures are displayed instead of being silently redirected away.
+Existing saved boards remain unchanged unless they contain a now-ineligible country or fail validation. Newly generated boards use the optimizer.

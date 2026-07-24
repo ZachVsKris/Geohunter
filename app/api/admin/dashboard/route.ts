@@ -7,7 +7,7 @@ export async function GET(){
  const auth=await requireAdmin(); if(!auth.ok)return NextResponse.json({error:auth.error},{status:auth.status});
  const {admin}=auth;
  const [cats,obsCount,imports,sources,boards]=await Promise.all([
-  admin.from('stat_categories').select('id,title,source_organization,source_indicator_code,enabled,country_coverage,latest_available_year,family',{count:'exact'}).order('title'),
+  admin.from('stat_categories').select('id,title,source_organization,source_indicator_code,enabled,eligible_daily,quality_score,country_coverage,latest_available_year,family',{count:'exact'}).order('title'),
   admin.from('stat_observations').select('country_iso3',{count:'exact',head:true}),
   admin.from('stat_import_runs').select('*').order('started_at',{ascending:false}).limit(20),
   admin.from('data_sources').select('*').order('display_order'),

@@ -6,6 +6,7 @@ import { fetchCountries, type CountryInfo } from "../lib/worldBank";
 import { fetchCategory } from "../lib/dataSources";
 import { SOURCE_REGISTRY } from "../lib/sourceRegistry";
 import { canonicalizeDataset, formatValue, poolLeaderboard, scorePlacements, validateRound } from "../lib/dataEngine";
+import { scoreCategoryQuality } from "../lib/categoryQuality";
 import { decodeRound, encodeRound, type Round, type RoundCategory } from "../lib/challengeCodec";
 import AccountControls from "./AccountControls";
 import { newYorkDate } from "../lib/time";
@@ -243,7 +244,8 @@ async function loadCandidateDatasets(seed: string, targetCount = 20): Promise<Ro
     for (const result of results) {
       if (result.status !== "fulfilled") continue;
       const dataset = result.value;
-      if (dataset.ranked.length < dataset.category.coverageFloor) continue;
+      const quality = scoreCategoryQuality(dataset);
+      if (!quality.eligible) continue;
       const type = roundType(dataset.category);
       if ((typeCounts.get(type) ?? 0) >= 4) continue;
       loaded.push(dataset);
@@ -280,6 +282,36 @@ function chooseDiverseCategories(
   return roundHasRequiredDiversity(selected.map((dataset) => dataset.category), config) ? selected : null;
 }
 
+
+function boardOptimizationScore(round: Round, config: RoundConfig) {
+  const familyCount = new Set(round.categories.map((dataset) => roundType(dataset.category))).size;
+  const measureCount = new Set(round.categories.map((dataset) => measureKind(dataset.category))).size;
+  const regionCount = new Set(round.bank.map((country) => country.region)).size;
+  const qualities = round.categories.map((dataset) => scoreCategoryQuality(dataset).score);
+  const qualityAverage = qualities.reduce((sum, score) => sum + score, 0) / Math.max(1, qualities.length);
+
+  const winnerGlobalRanks: number[] = [];
+  const poolGapSignals: number[] = [];
+  for (const dataset of round.categories) {
+    const leaderboard = poolLeaderboard(dataset, round.bank);
+    if (!leaderboard.length) continue;
+    winnerGlobalRanks.push(leaderboard[0].observation.globalRank);
+    if (leaderboard.length > 1) {
+      const first = leaderboard[0].observation.value;
+      const second = leaderboard[1].observation.value;
+      poolGapSignals.push(Math.abs(first - second) / (Math.abs(first) + Math.abs(second) + 1e-9));
+    }
+  }
+  const averageGlobalRank = winnerGlobalRanks.reduce((sum, rank) => sum + rank, 0) / Math.max(1, winnerGlobalRanks.length);
+  const averageGap = poolGapSignals.reduce((sum, gap) => sum + gap, 0) / Math.max(1, poolGapSignals.length);
+  const rankTarget = config.difficulty === "easy" ? 12 : config.difficulty === "normal" ? 32 : 58;
+  const gapTarget = config.difficulty === "easy" ? 0.34 : config.difficulty === "normal" ? 0.17 : 0.07;
+  const rankFit = Math.max(0, 1 - Math.abs(averageGlobalRank - rankTarget) / 65);
+  const gapFit = Math.max(0, 1 - Math.abs(averageGap - gapTarget) / 0.35);
+
+  return qualityAverage * 2.2 + familyCount * 12 + measureCount * 5 + regionCount * 4 + rankFit * 55 + gapFit * 55;
+}
+
 function composeRound(
   available: RoundCategory[],
   countryList: CountryInfo[],
@@ -291,7 +323,11 @@ function composeRound(
 ): Round | null {
   const rng = seededRandom(seed);
   const attempted = new Set<string>();
-  for (let attempt = 0; attempt < 320; attempt++) {
+  let bestRound: Round | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let validCandidates = 0;
+  // Search many valid candidates and retain the strongest board rather than accepting the first valid one.
+  for (let attempt = 0; attempt < 420; attempt++) {
     const categories = chooseDiverseCategories(available, rng, config, forbiddenIds);
     if (!categories) continue;
     const signature = categories.map((dataset) => dataset.category.id).sort().join("|");
@@ -302,9 +338,17 @@ function composeRound(
     const byId = new Map(countryList.map((country) => [country.id, country]));
     const bank = shuffle([...solution.winners, ...solution.decoys].map((id) => byId.get(id)!).filter(Boolean), rng);
     if (bank.length !== config.countryCount) continue;
-    if (validateRound(categories, bank).length === 0) return { bank, categories };
+    if (validateRound(categories, bank).length) continue;
+    const round = { bank, categories };
+    const score = boardOptimizationScore(round, config) + rng() * 0.01;
+    validCandidates += 1;
+    if (score > bestScore) {
+      bestScore = score;
+      bestRound = round;
+    }
+    if (validCandidates >= 36) break;
   }
-  return null;
+  return bestRound;
 }
 
 async function buildDailyTrio(
