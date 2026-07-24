@@ -19,7 +19,10 @@ async function fetchJsonWithRetry(url: string, attempts = 3) {
     try {
       const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) throw new Error(`World Bank returned HTTP ${response.status}.`);
-      return await response.json();
+      const json = await response.json();
+      const apiMessage = Array.isArray(json) ? json?.[0]?.message?.[0]?.value : null;
+      if (apiMessage) throw new Error(`World Bank API: ${apiMessage}`);
+      return json;
     } catch (error) {
       lastError = error;
       if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 500));

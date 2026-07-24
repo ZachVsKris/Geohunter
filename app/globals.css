@@ -925,3 +925,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:6px
 
 /* v11.5.4: restored one-attempt Daily state */
 .savedDailyNotice{margin:10px 0 2px;padding:9px 11px;border-left:3px solid var(--accent);background:rgba(212,191,114,.08);color:var(--ink)!important;font-family:var(--label)!important;font-size:9px!important;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+
+/* GeoStats v12 Puzzle Intelligence */
+.puzzleIntelligence .adminPanelHead{align-items:flex-start;gap:24px}.puzzleIntelligence .adminPanelHead p{max-width:760px;margin:.35rem 0 0;color:var(--muted,#6d6a60)}
+.adminPrimary{min-width:220px;padding:15px 20px;border-radius:10px;border:1px solid #183327;background:#102d22;color:#fff;font-weight:800;cursor:pointer}.adminPrimary:disabled{opacity:.55;cursor:wait}
+.diagnosticStrip{display:flex;flex-wrap:wrap;gap:12px 24px;margin:20px 0;padding:14px 16px;border:1px solid #d6ccb7;border-radius:10px;background:#f4efe3}
+.boardPreviewGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.boardPreview{border:1px solid #d6ccb7;border-radius:14px;padding:18px;background:#fffdf7}.boardPreviewHead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e4dccb;padding-bottom:12px;margin-bottom:12px}.boardPreviewHead span{text-transform:uppercase;font-weight:900;letter-spacing:.08em}.boardPreviewHead strong{display:block;font-size:2rem}.boardPreview h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px}.boardPreview p{line-height:1.45;margin:0}.scoreBars{display:flex;flex-wrap:wrap;gap:6px}.scoreBars span{font-size:.78rem;background:#edf1e8;border-radius:999px;padding:5px 8px}
+@media(max-width:900px){.boardPreviewGrid{grid-template-columns:1fr}.puzzleIntelligence .adminPanelHead{display:block}.adminPrimary{margin-top:14px;width:100%}}

@@ -17,12 +17,20 @@ const scoreRouteText = read("../app/api/scores/route.ts");
 const leaderboardText = read("../components/LeaderboardView.tsx");
 const leaderboardRouteText = read("../app/api/leaderboard/route.ts");
 const sourceRegistryText = read("../lib/sourceRegistry.ts");
+const puzzleEngineText = read("../lib/puzzleEngine.ts");
+const adminGenerateText = read("../app/api/admin/daily/generate/route.ts");
+const adminDashboardRouteText = read("../app/api/admin/dashboard/route.ts");
 
 const ids = [...categoryText.matchAll(/id:"([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(ids).size, ids.length, "Category IDs must be unique");
 assert.equal(ids.length, 76, "Expected 76 category definitions");
 assert.equal((categoryText.match(/wb\(\{id:/g) || []).length, 76);
 assert.equal((categoryText.match(/fao\(\{id:/g) || []).length, 0);
+assert.match(categoryText, /EN\.GHG\.CO2\.PC\.CE\.AR5/);
+assert.match(categoryText, /EN\.GHG\.CO2\.MT\.CE\.AR5/);
+assert.match(categoryText, /EN\.GHG\.CH4\.MT\.CE\.AR5/);
+assert.doesNotMatch(categoryText, /EN\.ATM\.CO2E\.(?:PC|KT)/);
+assert.doesNotMatch(categoryText, /EN\.ATM\.METH\.KT\.CE/);
 
 assert.match(rulesText, /DailyDifficulty = "easy" \| "normal" \| "expert"/);
 assert.match(rulesText, /categoryCount: 4/);
@@ -85,5 +93,10 @@ assert.doesNotMatch(leaderboardRouteText, /RULES_VERSION/);
 assert.match(sourceRegistryText, /scripts\/verify-worldbank\.mjs/);
 assert.doesNotMatch(sourceRegistryText, /verify-seed/);
 assert.equal(fs.existsSync(new URL("../scripts/verify-worldbank.mjs", import.meta.url)), true);
+assert.match(puzzleEngineText, /generateDailyTrio/);
+assert.match(adminGenerateText, /locked against regeneration/);
+assert.match(adminGenerateText, /validDate/);
+assert.match(adminDashboardRouteText, /newYorkDate/);
+assert.match(adminDashboardRouteText, /todayScoreCount/);
 
 console.log(`Invariant tests passed (${ids.length} definitions; Easy, Normal, and Expert Dailies with separate scoring and leaderboards).`);

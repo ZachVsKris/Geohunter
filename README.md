@@ -16,3 +16,12 @@ This release adds three connected systems:
 The refresh recalculates every category's quality score, marks Daily eligibility, removes non-UN countries from imported observations, and updates the canonical countries table.
 
 Existing saved boards remain unchanged unless they contain a now-ineligible country or fail validation. Newly generated boards use the optimizer.
+
+
+## v12.0.1 verification fixes
+
+- Uses the current World Bank AR5 series for total CO2, CO2 per capita, and methane emissions.
+- Preserves all v12 Puzzle Intelligence functionality; this is not a downgrade to v11.6.
+- Surfaces World Bank API message-envelope errors instead of misreporting them as zero coverage.
+- Uses the same New York date boundary in Admin and the Daily game.
+- Locks board regeneration once player scores exist, protecting saved scores and the one-attempt rule.
